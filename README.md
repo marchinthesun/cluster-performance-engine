@@ -73,8 +73,8 @@ nexusflow dashboard --listen 127.0.0.1:9842
 
 | Step | Command / link |
 |------|----------------|
-| **Git** | `git clone https://github.com/marchinthesun/many-core-optimizer.git`|
-| **Directory cd** | `cd many-core-optimizer`|
+| **Git** | `git clone https://github.com/marchinthesun/cluster-performance-engine.git`|
+| **Directory cd** | `cd cluster-performance-engine`|
 | **One-shot build** | `chmod +x install.sh` `./install.sh`|
 | **Deep dive CLI & packages** | [`nexusflow/README.md`](nexusflow/README.md) |
 | **Python SDK** | [`nexusflow/sdk/python/README.md`](nexusflow/sdk/python/README.md) |
