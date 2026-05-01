@@ -1,20 +1,4 @@
 #!/usr/bin/env bash
-# Repo root: build image, optional local bin install, kubermetrics apply, optional dashboard UI.
-#
-#   ./install.sh
-#   NEXUSFLOW_SKIP_BUILD=1 ./install.sh [--dry-run]
-#   docker build -t nexusflow:local -f nexusflow/Dockerfile nexusflow && NEXUSFLOW_SKIP_BUILD=1 ./install.sh
-#
-# PREFIX                 default $HOME/.local (extracted binary install)
-# NEXUSFLOW_IMAGE        image tag (default nexusflow:local)
-# NEXUSFLOW_SDK_IDENTITY optional, passed into kubermetrics container
-# NEXUSFLOW_KUBECONFIG   else KUBECONFIG or ~/.kube/config
-# NEXUSFLOW_DOCKER_NETWORK  Linux: host (default) | bridge — kubermetrics step only
-# NEXUSFLOW_UI           0 — skip UI after apply
-# NEXUSFLOW_UI_PORT      host port (default 9842)
-# NEXUSFLOW_UI_NAME      UI container name (default nexusflow-ui)
-# NEXUSFLOW_UI_ATTACH    1 — foreground UI container
-# NEXUSFLOW_INSTALL_VERBOSE   set to 1 for step-by-step install.sh messages and full kubermetrics logs
 
 set -euo pipefail
 
