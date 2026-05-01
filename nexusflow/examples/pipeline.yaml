@@ -1,0 +1,10 @@
+pipeline:
+  name: demo-etl-style
+  nodes:
+    - id: warmup
+      cmd: ["echo", "warmup"]
+      cpus: 0
+    - id: work
+      cmd: ["echo", "pinned-work"]
+      cpus: 2
+      depends_on: ["warmup"]

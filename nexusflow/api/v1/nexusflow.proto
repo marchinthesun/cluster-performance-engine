@@ -1,0 +1,80 @@
+syntax = "proto3";
+package nexusflow.v1;
+option go_package = "github.com/kube-metrics/nexusflow/api/v1;nexusflowv1";
+
+service NexusFlowDaemon {
+  rpc CreateCell(CreateCellRequest) returns (CreateCellReply);
+  rpc DestroyCell(DestroyCellRequest) returns (DestroyCellReply);
+  rpc AttachPID(AttachPIDRequest) returns (AttachPIDReply);
+  rpc RunInCell(RunInCellRequest) returns (stream RunInCellChunk);
+  rpc WatchL3(WatchL3Request) returns (stream L3Sample);
+  rpc SetHugepages(SetHugepagesRequest) returns (SetHugepagesReply);
+  rpc EvictForeign(EvictForeignRequest) returns (EvictForeignReply);
+}
+
+message CreateCellRequest {
+  string cell_id = 1;
+  repeated int32 cpus = 2;
+  repeated int32 mems = 3;
+  bool exclusive = 4;
+}
+
+message CreateCellReply {
+  string cgroup_path = 1;
+}
+
+message DestroyCellRequest {
+  string cell_id = 1;
+}
+
+message DestroyCellReply {}
+
+message AttachPIDRequest {
+  string cell_id = 1;
+  int32 pid = 2;
+}
+
+message AttachPIDReply {}
+
+message RunInCellRequest {
+  string cell_id = 1;
+  repeated string argv = 2;
+}
+
+message RunInCellChunk {
+  bytes stdout = 1;
+  bytes stderr = 2;
+  int32 exit_code = 3;
+  bool finished = 4;
+}
+
+message WatchL3Request {
+  string cell_id = 1;
+  int32 interval_ms = 2;
+}
+
+message L3Sample {
+  uint64 llc_misses = 1;
+  uint64 llc_references = 2;
+  int64 timestamp_unix = 3;
+}
+
+message SetHugepagesRequest {
+  int32 pages = 1;
+  string pagesize = 2;
+}
+
+message SetHugepagesReply {
+  int32 reserved_pages = 1;
+}
+
+message EvictForeignRequest {
+  repeated int32 cpus = 1;
+  bool dry_run = 2;
+  // If missing, uses SIGSTOP (19). Use 15 for SIGTERM, 9 for SIGKILL.
+  int32 signal_number = 3;
+}
+
+message EvictForeignReply {
+  int32 processes_stopped = 1;
+}

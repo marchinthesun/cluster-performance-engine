@@ -1,0 +1,20 @@
+# ETL-style DAG: stages pinned to different NUMA nodes (sequential runner).
+# Keeps reader/transform phases on distinct NUMA domains where topology exposes them.
+# Replace bash stubs with real preprocessors / inference wrappers.
+
+pipeline:
+  name: etl-numa-sample
+  nodes:
+    - id: ingest_numa0
+      cmd: ["bash", "-lc", "echo ingest on NUMA 0"]
+      cpus: 4
+      numa_node: 0
+    - id: transform_numa1
+      cmd: ["bash", "-lc", "echo transform on NUMA 1"]
+      cpus: 4
+      numa_node: 1
+      depends_on: ["ingest_numa0"]
+    - id: export_all
+      cmd: ["bash", "-lc", "echo export"]
+      cpus: 0
+      depends_on: ["transform_numa1"]

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NexusFlow — Control Deck</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-square"></span>
+        <span>NexusFlow</span>
+      </div>
+      <p class="tagline muted small">NUMA-local execution: topology, pins, DAG, plasma, perf.</p>
+
+      <section class="sidebar-section">
+        <h3 class="section-title">Auth</h3>
+        <label class="muted small" for="api-token">Bearer token</label>
+        <input type="password" id="api-token" class="mono token-input" spellcheck="false" autocomplete="off"
+          placeholder="if server uses --auth-token" />
+      </section>
+
+      <section class="sidebar-section">
+        <h3 class="section-title">Quick run</h3>
+        <select id="preset-select" class="preset-select mono" aria-label="Preset command">
+          <option value="topology --json --source auto">topology — JSON inventory</option>
+          <option value="topology matrix --source auto">topology — matrix (TSV / CI)</option>
+          <option value="topology hints --format shell --source auto">topology — shell hints</option>
+          <option value="dag run --file /demo/ref/pipeline.yaml">dag — demo pipeline</option>
+          <option value="shm create --size 65536 --name dashdemo">shm — 64KiB demo</option>
+          <option value="perf sample --sleep-ms 80 --kind cycles">perf — cycles sample</option>
+          <option value="hugepages set --size 2M --pages 0">hugepages — query/set (needs root)</option>
+          <option value="help">help — CLI overview (stderr)</option>
+        </select>
+        <div class="preset-row">
+          <button type="button" class="btn btn-outline btn-green btn-compact" id="preset-fill">Load</button>
+          <button type="button" class="btn btn-solid btn-green btn-compact" id="preset-run">Run</button>
+        </div>
+        <p class="muted small quick-hint">Load fills the command bar on the Output tab. <kbd>Shift</kbd>+Run runs without switching focus.</p>
+      </section>
+
+      <section class="sidebar-section">
+        <h3 class="section-title">Session</h3>
+        <div class="mono stat-box session-box">
+          <div class="small"><span class="muted">Wall</span> <span id="sess-time" class="accent">00:00:00</span></div>
+          <div class="small word-break"><span class="muted">ID</span> <span id="sess-id" class="accent-soft">—</span></div>
+          <div class="small"><span class="muted">Exec #</span> <span id="exec-count">0</span></div>
+          <div class="small word-break"><span class="muted">Last req</span> <span id="last-reqid">—</span></div>
+          <div class="small"><span class="muted">HTTP</span> <span id="last-http">—</span></div>
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <h3 class="section-title">Recent</h3>
+        <ul id="activity-feed" class="activity-feed mono small" aria-live="polite"></ul>
+      </section>
+
+      <section class="sidebar-section actions">
+        <button type="button" class="btn btn-outline btn-green" id="btn-topology-json">Topology JSON + Data</button>
+        <button type="button" class="btn btn-outline btn-green" id="btn-open-control">Control forms</button>
+        <button type="button" class="btn btn-outline btn-red" id="btn-clear">Clear transcript</button>
+      </section>
+
+      <section class="sidebar-section muted small footer-hint">
+        POST <span class="accent-soft">/api/exec</span> · remote: TLS + token + <span class="accent-dim">--allow-cidr</span>
+      </section>
+    </aside>
+
+    <main class="main">
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab active" data-tab="output" role="tab">Output</button>
+        <button type="button" class="tab" data-tab="topology" role="tab">Topology</button>
+        <button type="button" class="tab" data-tab="control" role="tab">Control</button>
+        <button type="button" class="tab" data-tab="guide" role="tab">Guide</button>
+      </nav>
+
+      <div class="context-bar">
+        <span class="ctx-label mono">last argv</span>
+        <span id="ctx-target" class="mono accent-soft word-break">—</span>
+        <span id="ctx-badges" class="badges"></span>
+      </div>
+
+      <div class="metrics-strip" id="metrics-strip">
+        <span class="pill pill-crit" id="m-exit">EXIT —</span>
+        <span class="pill pill-high" id="m-ms">TIME — ms</span>
+        <span class="pill pill-med" id="m-cpus">CPUs —</span>
+        <span class="pill pill-low" id="m-numa">NUMA —</span>
+        <span class="pill pill-muted" id="m-args">ARGS —</span>
+        <span class="pill pill-muted" id="m-seq">EXEC —</span>
+      </div>
+
+      <!-- Output: command + result subtabs -->
+      <section class="panel tab-panel active panel-flex" id="panel-output" role="tabpanel">
+        <div class="timeout-inline">
+          <label class="muted small" for="exec-timeout-sec">timeout_sec</label>
+          <input type="number" id="exec-timeout-sec" min="10" max="7200" value="180" title="10–7200; Plasma long runs need more" />
+        </div>
+        <div class="cli-bar">
+          <span class="prompt mono">nexusflow ▸</span>
+          <input type="text" id="cli-input" class="cli-input mono" spellcheck="false"
+            placeholder="e.g. topology --json --source auto" autocomplete="off" />
+          <button type="button" class="btn btn-solid btn-green" id="btn-run" title="Run (Enter)">Run</button>
+        </div>
+
+        <nav class="subtabs" role="tablist">
+          <button type="button" class="subtab active" data-sub="transcript" role="tab">Transcript</button>
+          <button type="button" class="subtab" data-sub="stdout" role="tab">Stdout</button>
+          <button type="button" class="subtab" data-sub="stderr" role="tab">Stderr</button>
+          <button type="button" class="subtab" data-sub="meta" role="tab">Run log</button>
+          <button type="button" class="subtab" data-sub="data" role="tab">Tables &amp; charts</button>
+        </nav>
+
+        <div class="subpanel-scroll">
+          <div class="subpanel active" id="sub-transcript" role="tabpanel">
+            <pre id="cli-log" class="mono cli-pre cli-pre-fill"></pre>
+          </div>
+          <div class="subpanel" id="sub-stdout" role="tabpanel" hidden>
+            <div class="panel-tools">
+              <button type="button" class="btn btn-outline btn-green btn-compact" id="btn-copy-stdout">Copy stdout</button>
+            </div>
+            <pre id="cli-out-stdout" class="mono cli-pre cli-pre-fill"></pre>
+          </div>
+          <div class="subpanel" id="sub-stderr" role="tabpanel" hidden>
+            <div class="panel-tools">
+              <button type="button" class="btn btn-outline btn-green btn-compact" id="btn-copy-stderr">Copy stderr</button>
+            </div>
+            <pre id="cli-out-stderr" class="mono cli-pre cli-pre-fill"></pre>
+          </div>
+          <div class="subpanel" id="sub-meta" role="tabpanel" hidden>
+            <pre id="cli-events" class="mono cli-pre cli-pre-fill"></pre>
+          </div>
+          <div class="subpanel" id="sub-data" role="tabpanel" hidden>
+            <div class="data-section">
+              <h4 class="data-heading">NUMA · logical CPUs (from topology JSON)</h4>
+              <div id="chart-numa" class="chart-wrap"></div>
+            </div>
+            <div class="data-section">
+              <h4 class="data-heading">Parsed tabular output (TSV / topology matrix)</h4>
+              <div class="table-wrap data-table-host" id="parsed-table-wrap">
+                <p class="muted small pad-table">Run <span class="accent-dim">topology --json</span> or <span class="accent-dim">topology matrix</span> to populate this view.</p>
+              </div>
+            </div>
+            <p id="data-hint" class="muted small"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Topology table -->
+      <section class="panel tab-panel panel-flex" id="panel-topology" role="tabpanel">
+        <div class="panel-head">
+          <h2 class="panel-title">CPU inventory <span class="muted">(<span id="row-count">0</span> logical)</span></h2>
+          <p class="muted small">Filled from the last stdout that contained topology JSON (see Output → Tables &amp; charts).</p>
+        </div>
+        <div class="table-wrap table-flex">
+          <table class="data-table" id="cpu-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>PKG</th>
+                <th>CORE</th>
+                <th>NUMA</th>
+                <th>CPU ID</th>
+                <th>SIBLINGS</th>
+              </tr>
+            </thead>
+            <tbody id="cpu-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Control -->
+      <section class="panel tab-panel panel-scroll" id="panel-control" role="tabpanel">
+        <div class="panel-head">
+          <h2 class="panel-title">Control deck</h2>
+          <p class="muted small cli-sub">Whitelist-safe argv builders. Subprocess timeout is on the <strong class="accent-dim">Output</strong> tab.</p>
+        </div>
+
+        <div class="control-deck-grid">
+          <div class="control-card">
+            <h4>run — pinned command</h4>
+            <div class="field-row">
+              <label class="muted-field" for="nf-run-cpus">--cpus</label>
+              <input type="text" id="nf-run-cpus" placeholder="omit or 0 = all" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-run-numa">--numa</label>
+              <input type="text" id="nf-run-numa" placeholder="optional node id" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-run-priority">--priority</label>
+              <select id="nf-run-priority" title="nice before exec on Linux">
+                <option value="">(default normal)</option>
+                <option value="high">high (-10)</option>
+                <option value="normal">normal (0)</option>
+                <option value="low">low (10)</option>
+              </select>
+            </div>
+            <div class="field-row field-row-checkbox">
+              <label class="muted-field" for="nf-run-membind">--membind</label>
+              <label class="check-label"><input type="checkbox" id="nf-run-membind" checked /> numactl membind when available</label>
+            </div>
+            <div class="field-row" style="grid-template-columns:1fr;">
+              <label class="muted-field" for="nf-run-cmd">after --</label>
+            </div>
+            <textarea id="nf-run-cmd" placeholder="echo hello&#10;Or multiple lines → bash -lc script"></textarea>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="run-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="run-run">Fill &amp; Run</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h4>dag run</h4>
+            <div class="field-row">
+              <label class="muted-field" for="nf-dag-file">--file</label>
+              <input type="text" id="nf-dag-file" value="/demo/ref/pipeline.yaml" spellcheck="false" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-dag-prom">--prom-file</label>
+              <input type="text" id="nf-dag-prom" placeholder="/tmp/nf.prom (optional)" spellcheck="false" />
+            </div>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="dag-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="dag-run">Fill &amp; Run</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h4>shm create</h4>
+            <div class="field-row">
+              <label class="muted-field" for="nf-shm-size">--size</label>
+              <input type="text" id="nf-shm-size" value="65536" spellcheck="false" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-shm-name">--name</label>
+              <input type="text" id="nf-shm-name" placeholder="optional slug" spellcheck="false" />
+            </div>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="shm-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="shm-run">Fill &amp; Run</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h4>plasma run</h4>
+            <div class="field-row">
+              <label class="muted-field" for="nf-plasma-listen">--listen</label>
+              <input type="text" id="nf-plasma-listen" value="/run/plasma-dash.sock" spellcheck="false" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-plasma-file">--file</label>
+              <input type="text" id="nf-plasma-file" value="/demo/plasma.yaml" spellcheck="false" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-plasma-shm-name">--shm-name</label>
+              <input type="text" id="nf-plasma-shm-name" value="dashdemo" spellcheck="false" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-plasma-shm-size">--shm-size</label>
+              <input type="number" id="nf-plasma-shm-size" value="65536" min="1" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-plasma-idle">--idle-exit</label>
+              <input type="text" id="nf-plasma-idle" value="120s" spellcheck="false" />
+            </div>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="plasma-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="plasma-run">Fill &amp; Run</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h4>perf sample</h4>
+            <div class="field-row">
+              <label class="muted-field" for="nf-perf-ms">--sleep-ms</label>
+              <input type="number" id="nf-perf-ms" value="80" min="1" />
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-perf-kind">--kind</label>
+              <select id="nf-perf-kind">
+                <option value="cycles">cycles</option>
+                <option value="instructions">instructions</option>
+              </select>
+            </div>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="perf-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="perf-run">Fill &amp; Run</button>
+            </div>
+          </div>
+
+          <div class="control-card">
+            <h4>hugepages set</h4>
+            <p class="muted small">Privileged on Linux. Dashboard must run as root or with sysfs rights.</p>
+            <div class="field-row">
+              <label class="muted-field" for="nf-hp-size">--size</label>
+              <select id="nf-hp-size">
+                <option value="2M">2M</option>
+                <option value="1G">1G</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label class="muted-field" for="nf-hp-pages">--pages</label>
+              <input type="number" id="nf-hp-pages" value="128" min="0" title="nr_hugepages target" />
+            </div>
+            <div class="control-actions">
+              <button type="button" class="btn btn-outline btn-green btn-compact" data-act="hp-fill">Fill bar</button>
+              <button type="button" class="btn btn-solid btn-green btn-compact" data-act="hp-run">Fill &amp; Run</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Guide -->
+      <section class="panel tab-panel panel-scroll" id="panel-guide" role="tabpanel">
+        <div class="panel-head">
+          <h2 class="panel-title">Guide</h2>
+          <p class="muted small">NexusFlow is an <strong class="accent-dim">autopilot layer</strong> for big Linux sockets: it sees NUMA “neighborhoods” and keeps work, memory, and caches aligned so jobs spend less time waiting on remote DRAM.</p>
+        </div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <h4>The problem</h4>
+            <p class="muted small">A 128-thread machine is not one flat pool. If a thread on die A touches memory that “belongs” to die B, you pay cross-node latency. Throughput looks capped even though nominal GHz is high.</p>
+          </div>
+          <div class="guide-card">
+            <h4>What NexusFlow does</h4>
+            <ul class="muted small guide-list">
+              <li><strong>Map</strong> hardware (sysfs / hwloc): NUMA nodes, packages, siblings.</li>
+              <li><strong>Pin</strong> processes to CPU sets; optional same-node memory bind (<code>numactl</code>).</li>
+              <li><strong>Pipeline</strong> with YAML DAG + Prometheus timings; Plasma + shared memory for fast handoffs.</li>
+              <li><strong>Daemon (Linux)</strong> cgroup v2 cells, LLC sampling, hugepages, eviction — gRPC.</li>
+            </ul>
+          </div>
+          <div class="guide-card">
+            <h4>Try from this UI</h4>
+            <ol class="muted small guide-list">
+              <li>Output → <kbd>Run</kbd> on <code>topology --json --source auto</code>.</li>
+              <li>Open <strong>Tables &amp; charts</strong> for NUMA bars + TSV tables.</li>
+              <li>Open <strong>Topology</strong> for the per-CPU grid.</li>
+            </ol>
+            <button type="button" class="btn btn-outline btn-green btn-compact" id="btn-help-cmd">Run <code>help</code> into transcript</button>
+          </div>
+        </div>
+        <div class="guide-card guide-card-wide">
+          <h4>Live CLI help (stdout + stderr in Transcript)</h4>
+          <pre id="guide-help-placeholder" class="mono block-pre muted small">Press the button above or run <code>help</code> from the command bar.</pre>
+        </div>
+      </section>
+
+      <footer class="status-footer mono small">
+        <span id="footer-sess-hint">nexusflow dashboard</span>
+      </footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+pipeline:
+  name: plasma-docker-demo
+  nodes:
+    - id: bootstrap
+      cmd: ["python3", "/demo/worker_branch.py"]
+      cpus: 0

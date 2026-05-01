@@ -1,0 +1,18 @@
+[Unit]
+Description=NexusFlow dashboard (TLS + Bearer token recommended on shared networks)
+After=network-online.target
+
+[Service]
+Type=simple
+# Prefer binding loopback and reverse-proxy; if listening on all interfaces use TLS + auth-token + allow-cidr.
+ExecStart=/usr/local/bin/nexusflow dashboard \
+  --listen 127.0.0.1:9842 \
+  --tls-cert /etc/nexusflow/cert.pem \
+  --tls-key /etc/nexusflow/key.pem \
+  --auth-token REPLACE_WITH_SECRET \
+  --allow-cidr 10.0.0.0/8 \
+  --allow-cidr 127.0.0.1/32
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

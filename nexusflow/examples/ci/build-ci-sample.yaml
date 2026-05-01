@@ -1,0 +1,23 @@
+# CI-oriented DAG: sequential stages with different CPU budgets (self-hosted runner).
+# Nodes run in topological order; each stage may pin via taskset when cpus > 0.
+# Emit Prometheus text after success: nexusflow dag run --file examples/ci/build-ci-sample.yaml --prom-file /var/lib/node_exporter/textfile_collector/nexusflow.prom
+
+pipeline:
+  name: ci-build-sample
+  nodes:
+    - id: configure
+      cmd: ["bash", "-lc", "echo configure"]
+      cpus: 2
+    - id: compile_socket_local
+      cmd:
+        [
+          "bash",
+          "-lc",
+          'test -n "${NEXUSFLOW_MAKE_J_LOGICAL:-}" || eval "$(nexusflow topology hints --format shell)"; echo make -j"${NEXUSFLOW_MAKE_J_LOGICAL}"',
+        ]
+      cpus: 0
+      depends_on: ["configure"]
+    - id: test_serial
+      cmd: ["bash", "-lc", "echo test"]
+      cpus: 1
+      depends_on: ["compile_socket_local"]
