@@ -69,14 +69,17 @@ nexusflow dashboard --listen 127.0.0.1:9842
 
 ---
 
-## SEO summary (for GitHub About / site meta)
+## Quick start
 
-| Field | Suggested text |
-|--------|----------------|
-| **Description** | NexusFlow: High-performance NUMA-aware task orchestrator for many-core bare-metal and Linux clusters. Maps topology via sysfs/hwloc, pins CPUs, runs DAG + Plasma coordinators with POSIX shared memory and fd passing—cut cross-socket latency for HPC, ML inference, ETL, and CI pipelines. |
-| **Topics / tags** | `hpc`, `numa-aware`, `cpu-pinning`, `bare-metal`, `performance-optimization`, `latency-reduction`, `kubernetes`, `many-core`, `shared-memory`, `go`, `distributed-systems`, `linux-scheduling`, `epyc`, `threadripper`, `zerocopy-ipc`, `dag`, `prometheus`, `slurm`, `hwloc` |
-
-*Note: The upstream README historically mentioned Rust as a future direction; the **shipping** implementation is **Go**.*
+| Step | Command / link |
+|------|----------------|
+| **One-shot build** | `./install.sh`|
+| **Deep dive CLI & packages** | [`nexusflow/README.md`](nexusflow/README.md) |
+| **Python SDK** | [`nexusflow/sdk/python/README.md`](nexusflow/sdk/python/README.md) |
+| **Slurm / hints** | [`nexusflow/examples/slurm/README.md`](nexusflow/examples/slurm/README.md) |
+| **Architecture (full)** | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| **Security & disclosure** | [`SECURITY.md`](SECURITY.md) |
+| **Product narrative** | [`docs/PRODUCT-VISION.md`](docs/PRODUCT-VISION.md) |
 
 ---
 
@@ -131,20 +134,6 @@ Measured project campaign on representative enterprise / HPC workloads: **same h
 *NexusFlow turns wasted scheduler / cross-NUMA overhead into useful throughput—lower tail latency and higher effective CPU utilization on large-socket fleets.*
 
 ---
-
-## Quick start (this monorepo)
-
-| Step | Command / link |
-|------|----------------|
-| **One-shot build + optional cluster apply + UI** | `./install.sh` (see script header for env vars) |
-| **Local binary** | `cd nexusflow && go build -o nexusflow ./cmd/nexusflow` |
-| **Deep dive CLI & packages** | [`nexusflow/README.md`](nexusflow/README.md) |
-| **Python SDK** | [`nexusflow/sdk/python/README.md`](nexusflow/sdk/python/README.md) |
-| **Slurm / hints** | [`nexusflow/examples/slurm/README.md`](nexusflow/examples/slurm/README.md) |
-| **Architecture (full)** | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| **Security & disclosure** | [`SECURITY.md`](SECURITY.md) |
-| **Product narrative** | [`docs/PRODUCT-VISION.md`](docs/PRODUCT-VISION.md) |
-
 ## Module import path
 
 ```text
